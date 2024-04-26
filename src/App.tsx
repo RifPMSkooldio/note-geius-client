@@ -1,13 +1,59 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AuthenticationState,
   useAuthentication,
 } from './providers/AuthenticationProvider'
 
 import { cn } from './utils'
+import { FileUpload, OnDrop } from './components/FileUpload'
+import { useSessionName } from './containers/SessionNameProvider/SessionNameProvider'
+import { ProductTitle } from './components/ProductTitle'
+import { doc, setDoc } from 'firebase/firestore'
+import { db, uploadRawFile } from './services/firebase'
+import { DocumentName } from './utils/type'
 
 const App = () => {
-  const { signIn, state } = useAuthentication()
+  const { user, signIn, state } = useAuthentication()
+  const [isUploadingFile, setIsUploadingFile] = useState(false)
+  const [, setIsShowSummarizeSections] = useState(false)
+
+  const { onNameChange } = useSessionName()
+
+  useEffect(() => {
+    signIn()
+    if (state === AuthenticationState.LOADING) return
+  }, [signIn, state])
+
+  const onDrop: OnDrop = async (uploadedFiles) => {
+    try {
+      setIsShowSummarizeSections(false)
+      setIsUploadingFile(true)
+      const file = uploadedFiles[0]
+      const collectionName = `/sessions/${user?.uid}/${Date.now()}`
+      onNameChange(collectionName)
+
+      // 1. create sessions
+      await setDoc(doc(db, collectionName, DocumentName.RAW), {
+        status: 'PROCESSING',
+      })
+      await setDoc(doc(db, collectionName, DocumentName.ASSESSMENT), {
+        status: 'PROCESSING',
+      })
+      await setDoc(doc(db, collectionName, DocumentName.SUMMARIZATION), {
+        status: 'PROCESSING',
+      })
+      await setDoc(doc(db, collectionName, DocumentName.VISUALIZATION), {
+        status: 'PROCESSING',
+      })
+
+      await uploadRawFile(file, `${collectionName}/${file.name}`) // upload to pluem bucket
+      setIsShowSummarizeSections(true)
+    } catch (err) {
+      console.log('err', err)
+    } finally {
+      setIsUploadingFile(false)
+    }
+  }
 
   useEffect(() => {
     signIn()
@@ -42,7 +88,14 @@ const App = () => {
 
   return (
     <div className={cn('px-3 py-6 md:px-4 md:py-8 lg:px-8 lg:py-16')}>
-      Application
+      <div className={cn('flex flex-col gap-y-6 lg:flex-row', 'w-full mb-4')}>
+        <ProductTitle className={cn('text-center space-y-2', 'lg:w-1/2')} />
+        <FileUpload
+          onDrop={onDrop}
+          isUploading={isUploadingFile}
+          className="lg:w-1/2 lg:max-w-[600px]"
+        />
+      </div>
     </div>
   )
 }
