@@ -11,11 +11,12 @@ import { ProductTitle } from './components/ProductTitle'
 import { doc, setDoc } from 'firebase/firestore'
 import { db, uploadRawFile } from './services/firebase'
 import { DocumentName } from './utils/type'
+import { SummarySection } from './containers/SummarySection'
 
 const App = () => {
   const { user, signIn, state } = useAuthentication()
   const [isUploadingFile, setIsUploadingFile] = useState(false)
-  const [, setIsShowSummarizeSections] = useState(false)
+  const [isShowSummarizeSections, setIsShowSummarizeSections] = useState(false)
 
   const { onNameChange } = useSessionName()
 
@@ -55,11 +56,6 @@ const App = () => {
     }
   }
 
-  useEffect(() => {
-    signIn()
-    if (state === AuthenticationState.LOADING) return
-  }, [signIn, state])
-
   if (state === AuthenticationState.LOADING) {
     return (
       <div className={'h-dvh flex justify-center items-center'}>
@@ -96,6 +92,7 @@ const App = () => {
           className="lg:w-1/2 lg:max-w-[600px]"
         />
       </div>
+      <SummarySection disabled={!isShowSummarizeSections} />
     </div>
   )
 }
